@@ -5,15 +5,9 @@ pkgver=3.2.1
 pkgrel=21
 pkgdesc="NVIDIA Optimus support for Linux through VirtualGL"
 arch=('x86_64')
-depends=('virtualgl' 'glib2' 'mesa-libgl')
+depends=('glib2' 'mesa-libgl' 'nvidia>=435.17' 'primus')
 makedepends=('help2man')
-optdepends=('bbswitch: switch on/off discrete card'
-            'nvidia: NVIDIA kernel driver'
-            'nvidia-390xx: NVIDIA kernel driver for old devices'
-            'nvidia-340xx: NVIDIA kernel driver for even older devices'
-            'primus: faster back-end for optirun'
-            'lib32-virtualgl: run 32bit applications with optirun'
-            'lib32-primus: faster back-end for optirun')
+optdepends=('bbswitch: switch on/off discrete card')
 url="http://www.bumblebee-project.org"
 license=("GPL3")
 install=bumblebee.install
@@ -29,6 +23,7 @@ source=("https://www.bumblebee-project.org/${pkgname}-${pkgver}.tar.gz"
         "0006-bb_hexadicimal_bug573.patch::https://github.com/Bumblebee-Project/Bumblebee/commit/2073f8537412aa47755eb6f3f22a114403e5285b.patch"
         "0007-bb_mutebblogger.patch"
         "0008-libglvnd.patch"
+        "optirun"
         "bumblebee.conf"
         "bumblebee.sysusers")
 sha256sums=('1018703b07e2f607a4641249d69478ce076ae5a1e9dd6cff5694d394fa7ee30e'
@@ -40,6 +35,7 @@ sha256sums=('1018703b07e2f607a4641249d69478ce076ae5a1e9dd6cff5694d394fa7ee30e'
             '0b7c1f4bb2e27d131c6c21fd7006d075584917ac4259bd9899e6eca99efc0ece'
             'cbe3e1717bc80146b87d8f2ab1158ee9e094ea5bb2ca9a4a8c09c24b086a7792'
             'b260d64a53617807afe21560db0592d114d7775b182e13fb59349f0157c8dba4'
+            'f3176826f7f11fcf8d8f82733eeb8b5e4913769ef962e497a761d264879cf507'
             '1c3d4f5d40245a23a5f1cb1f2f6bd4274ff3c5b3749f76a09255191328ae3193'
             '1bc209c21b4f6d1975ede4091829baf98d20b33100b9d21061393880bb391fd8')
 
@@ -72,6 +68,10 @@ package() {
     make install DESTDIR="${pkgdir}" \
       completiondir=/usr/share/bash-completion/completions
 
+    # Replace optirun with the dummy wrapper
+    rm "${pkgdir}"/usr/bin/optirun
+    install -Dm755 "${srcdir}"/optirun "${pkgdir}"/usr/bin/optirun
+
     # Blacklist nvidia and nouveau modules
     # Reference: https://github.com/Bumblebee-Project/Bumblebee/issues/719
     install -Dm644 "${srcdir}"/bumblebee.conf "${pkgdir}"/usr/lib/modprobe.d/bumblebee.conf
@@ -79,12 +79,6 @@ package() {
     # Install systemd unit
     install -Dm644 scripts/systemd/bumblebeed.service "${pkgdir}"/usr/lib/systemd/system/bumblebeed.service
     sed -i "s/sbin/bin/" "${pkgdir}"/usr/lib/systemd/system/bumblebeed.service
-
-    # Make bash_completion work
-    mv -v "${pkgdir}"/usr/share/bash-completion/completions/{bumblebee,optirun}
-
-    # Fix for FS#59312
-    sed -i "s/have/_have/" "${pkgdir}"/usr/share/bash-completion/completions/optirun
 
     install -Dm644 "${srcdir}"/bumblebee.sysusers "${pkgdir}"/usr/lib/sysusers.d/$pkgname.conf
 }
